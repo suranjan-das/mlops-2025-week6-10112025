@@ -1,0 +1,70 @@
+name: Build-And-Deploy-to-GKE
+
+on:
+  push:
+    branches: [ "main" ]
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT }}
+  REGION: ${{ secrets.GCP_REGION }}
+  ARTIFACT_REPO: ${{ secrets.ARTIFACT_REPO }}
+  IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
+  CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
+  CLUSTER_ZONE: ${{ secrets.CLUSTER_ZONE }}
+  K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Set up Cloud SDK auth
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Configure docker for Artifact Registry
+      run: |
+        gcloud config set project $PROJECT_ID
+        gcloud auth configure-docker ${REGION}-docker.pkg.dev --quiet
+
+    - name: Build and push Docker image
+      id: build-image
+      uses: docker/build-push-action@v4
+      with:
+        push: true
+        tags: |
+          ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${{ github.sha }}
+          ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:latest
+        file: ./Dockerfile
+        platforms: linux/amd64
+
+    - name: Get GKE credentials
+      uses: google-github-actions/get-gke-credentials@v1
+      with:
+        cluster_name: ${{ env.CLUSTER_NAME }}
+        location: ${{ env.CLUSTER_ZONE }}
+        project_id: ${{ env.PROJECT_ID }}
+
+    - name: Create namespace if not exists
+      run: |
+        kubectl create namespace ${K8S_NAMESPACE} || true
+
+    - name: Deploy to GKE (apply k8s manifests)
+      run: |
+        # Replace image tag in the k8s manifest dynamically
+        IMAGE_REF=${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${{ github.sha }}
+        echo "Using image: $IMAGE_REF"
+        # update deployment manifest on the fly (simple sed)
+        sed -e "s#us-central1-docker.pkg.dev/PROJECT_ID/ARTIFACT_REPO/iris-api:TAG#${IMAGE_REF}#g" k8s/deployment.yaml > k8s/deployment.generated.yaml || cp k8s/deployment.yaml k8s/deployment.generated.yaml
+        kubectl apply -f k8s/deployment.generated.yaml
+        kubectl apply -f k8s/service.yaml
+
+    - name: Wait for rollout
+      run: |
+        kubectl rollout status deployment/iris-api-deployment -n ${K8S_NAMESPACE} --timeout=120s || true
+
+    - name: Output service info
+      run: kubectl get svc -n ${K8S_NAMESPACE} -o wide
