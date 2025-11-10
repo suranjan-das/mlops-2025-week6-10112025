@@ -36,7 +36,6 @@ jobs:
       with:
         push: true
         tags: |
-          ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${{ github.sha }}
           ${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:latest
         file: ./Dockerfile
         platforms: linux/amd64
