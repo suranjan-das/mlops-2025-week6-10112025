@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: iris-api-container
-        image: us-central1-docker.pkg.dev/PROJECT_ID/ARTIFACT_REPO/iris-api:TAG
+        image: us-central1-docker.pkg.dev/exalted-point-473314-c5/mlops-repo-2025/iris-api:latest
         ports:
         - containerPort: 8200
         readinessProbe:
