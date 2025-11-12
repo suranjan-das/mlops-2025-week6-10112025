@@ -8,7 +8,7 @@ import joblib
 import numpy as np
 import os
 
-# OpenTelemetry imports
+# OpenTelemetry imports 
 from opentelemetry import trace
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
