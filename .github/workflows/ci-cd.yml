@@ -77,7 +77,7 @@ jobs:
     - name: Setup Kubernetes telemetry access
       run: |
         echo "Setting up Kubernetes service account telemetry-access..."
-        kubectl create serviceaccount telemetry-access --namespace default || true
+        
         kubectl annotate serviceaccount telemetry-access \
           --namespace default \
           iam.gke.io/gcp-service-account=telemetry-access@${PROJECT_ID}.iam.gserviceaccount.com --overwrite
