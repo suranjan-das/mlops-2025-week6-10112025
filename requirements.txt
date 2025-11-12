@@ -4,3 +4,5 @@ uvicorn
 scikit-learn
 joblib
 numpy
+pydantic
+opentelemetry-exporter-gcp-trace
