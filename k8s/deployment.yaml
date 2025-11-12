@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: iris-api-deployment
-  namespace: default
+  namespace: iris-classifier   # changed from 'default'
 spec:
   replicas: 2
   selector:
@@ -13,7 +13,7 @@ spec:
       labels:
         app: iris-api
     spec:
-      serviceAccountName: telemetry-access  # for OpenTelemetry or logging access if configured
+      serviceAccountName: telemetry-access
       containers:
       - name: iris-api-container
         image: us-central1-docker.pkg.dev/exalted-point-473314-c5/mlops-repo-2025/iris-api:latest
@@ -21,15 +21,15 @@ spec:
         - containerPort: 8200
         readinessProbe:
           httpGet:
-            path: /ready_check      # updated to match your FastAPI readiness endpoint
+            path: /ready_check
             port: 8200
-          initialDelaySeconds: 5
+          initialDelaySeconds: 10
           periodSeconds: 10
         livenessProbe:
           httpGet:
-            path: /live_check       # updated to match your FastAPI liveness endpoint
+            path: /live_check
             port: 8200
-          initialDelaySeconds: 15   # earlier detection for faster recovery
+          initialDelaySeconds: 20
           periodSeconds: 20
         resources:
           requests:
@@ -40,4 +40,4 @@ spec:
             memory: "512Mi"
         env:
         - name: MODEL_PATH
-          value: "/app/model/model.joblib"   # optional if your model path differs
+          value: "/app/model/model.joblib"

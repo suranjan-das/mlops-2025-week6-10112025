@@ -2,7 +2,7 @@ apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
   name: iris-api-hpa
-  namespace: default
+  namespace: iris-classifier    # changed from 'default'
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
