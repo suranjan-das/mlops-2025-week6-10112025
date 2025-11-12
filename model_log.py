@@ -52,7 +52,7 @@ class Input(BaseModel):
 async def startup_event():
     try:
         logger.info("Loading model.joblib...")
-        model_path = os.getenv("MODEL_PATH", "model/model.joblib")
+        model_path = os.getenv("MODEL_PATH", "model.joblib")
         app_state["model"] = joblib.load(model_path)
         app_state["is_ready"] = True
         logger.info(f"Model loaded successfully from {model_path}")
