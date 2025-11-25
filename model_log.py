@@ -17,11 +17,13 @@ from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 PROJECT_ID = "exalted-point-473314-c5"
 
 # Setup Tracer
-trace.set_tracer_provider(TracerProvider(sampler=AlwaysOnSampler()))
-tracer = trace.get_tracer(__name__)
+provider = TracerProvider(sampler=AlwaysOnSampler())
+trace.set_tracer_provider(provider)
+
 cloud_exporter = CloudTraceSpanExporter(project_id=PROJECT_ID)
 span_processor = BatchSpanProcessor(cloud_exporter)
 trace.get_tracer_provider().add_span_processor(span_processor)
+tracer = trace.get_tracer(__name__)
 
 # Setup structured logging
 logger = logging.getLogger("iris-ml-service")
@@ -138,10 +140,13 @@ async def predict(input: Input, request: Request):
                 "trace_id": trace_id,
                 "latency_ms": latency
             }
+            
+            gcp_trace_field = f"projects/{PROJECT_ID}/traces/{trace_id}"
 
             logger.info(json.dumps({
                 "event": "prediction",
                 "trace_id": trace_id,
+                "logging.googleapis.com/trace": gcp_trace_field,
                 "input": input_data,
                 "result": result,
                 "status": "success"
