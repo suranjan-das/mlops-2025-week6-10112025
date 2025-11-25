@@ -38,6 +38,3 @@ spec:
           limits:
             cpu: "500m"
             memory: "512Mi"
-        env:
-        - name: MODEL_PATH
-          value: "/app/model/model.joblib"
