@@ -14,10 +14,13 @@ from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor
 from opentelemetry.exporter.cloud_trace import CloudTraceSpanExporter
 
+PROJECT_ID = "exalted-point-473314-c5"
+
 # Setup Tracer
-trace.set_tracer_provider(TracerProvider())
+trace.set_tracer_provider(TracerProvider(sampler=AlwaysOnSampler()))
 tracer = trace.get_tracer(__name__)
-span_processor = BatchSpanProcessor(CloudTraceSpanExporter())
+cloud_exporter = CloudTraceSpanExporter(project_id=PROJECT_ID)
+span_processor = BatchSpanProcessor(cloud_exporter)
 trace.get_tracer_provider().add_span_processor(span_processor)
 
 # Setup structured logging
