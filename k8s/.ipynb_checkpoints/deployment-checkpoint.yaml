@@ -2,7 +2,6 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: iris-api-deployment
-  namespace: iris-classifier   # changed from 'default'
 spec:
   replicas: 2
   selector:

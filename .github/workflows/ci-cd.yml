@@ -11,7 +11,6 @@ env:
   IMAGE_NAME: ${{ secrets.IMAGE_NAME }}
   CLUSTER_NAME: ${{ secrets.CLUSTER_NAME }}
   CLUSTER_ZONE: ${{ secrets.CLUSTER_ZONE }}
-  K8S_NAMESPACE: ${{ secrets.K8S_NAMESPACE }}
 
 jobs:
   build-and-deploy:
@@ -74,44 +73,39 @@ jobs:
         location: ${{ env.CLUSTER_ZONE }}
         project_id: ${{ env.PROJECT_ID }}
 
-    - name: Create or update Kubernetes namespace
-      run: |
-        echo "Ensuring namespace ${K8S_NAMESPACE} exists..."
-        kubectl create namespace ${K8S_NAMESPACE} || true
+    # ⬇️ Namespace-related step removed
 
     - name: Setup Kubernetes telemetry access
       run: |
-        echo "Setting up Kubernetes service account telemetry-access..."
-        kubectl create serviceaccount telemetry-access -n ${K8S_NAMESPACE} || true
+        echo "Setting up Kubernetes service account telemetry-access in default namespace..."
+        kubectl create serviceaccount telemetry-access || true
         kubectl annotate serviceaccount telemetry-access \
-          -n ${K8S_NAMESPACE} \
           iam.gke.io/gcp-service-account=telemetry-access@${PROJECT_ID}.iam.gserviceaccount.com --overwrite
         gcloud iam service-accounts add-iam-policy-binding telemetry-access@${PROJECT_ID}.iam.gserviceaccount.com \
           --role roles/iam.workloadIdentityUser \
-          --member "serviceAccount:${PROJECT_ID}.svc.id.goog[${K8S_NAMESPACE}/telemetry-access]" || echo "Skipping IAM binding (permission may be limited)."
+          --member "serviceAccount:${PROJECT_ID}.svc.id.goog[default/telemetry-access]" || echo "Skipping IAM binding (permission may be limited)."
 
     - name: Deploy application manifests to GKE
       run: |
         IMAGE_REF=${REGION}-docker.pkg.dev/${PROJECT_ID}/${ARTIFACT_REPO}/${IMAGE_NAME}:${{ github.sha }}
         echo "Using image: $IMAGE_REF"
 
-        # Inject the new image tag dynamically
+        # Inject the new image tag dynamically (no namespace rewriting now)
         sed -e "s#us-central1-docker.pkg.dev/PROJECT_ID/ARTIFACT_REPO/iris-api:TAG#${IMAGE_REF}#g" \
-            -e "s#namespace: default#namespace: ${K8S_NAMESPACE}#g" \
             k8s/deployment.yaml > k8s/deployment.generated.yaml
 
-        # Apply all manifests within the target namespace
-        kubectl apply -f k8s/deployment.generated.yaml -n ${K8S_NAMESPACE}
-        kubectl apply -f k8s/service.yaml -n ${K8S_NAMESPACE}
-        kubectl apply -f k8s/hpa.yaml -n ${K8S_NAMESPACE}
+        # Apply all manifests into the default namespace (implicit)
+        kubectl apply -f k8s/deployment.generated.yaml
+        kubectl apply -f k8s/service.yaml
+        kubectl apply -f k8s/hpa.yaml
 
     - name: Wait for rollout
       run: |
         echo "Waiting for deployment rollout..."
-        kubectl rollout status deployment/iris-api-deployment -n ${K8S_NAMESPACE} --timeout=180s || \
-        (echo "⚠️ Rollout timeout or partial failure — check pods with 'kubectl get pods -n ${K8S_NAMESPACE}'" && exit 1)
+        kubectl rollout status deployment/iris-api-deployment --timeout=180s || \
+        (echo "⚠️ Rollout timeout or partial failure — check pods with 'kubectl get pods'" && exit 1)
 
     - name: Output service info
       run: |
         echo "Deployment completed successfully."
-        kubectl get svc -n ${K8S_NAMESPACE} -o wide
+        kubectl get svc -o wide
